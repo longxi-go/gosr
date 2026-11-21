@@ -1,0 +1,11 @@
+package consumer
+
+import (
+	"context"
+
+	"github.com/longxi-go/gosr/pkg/event"
+)
+
+func send(p event.Publisher, ctx context.Context) {
+	_ = p.PublishEvent(ctx, "ordinary")
+}

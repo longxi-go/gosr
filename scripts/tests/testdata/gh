@@ -1,0 +1,18 @@
+#!/usr/bin/env python3
+"""Provide deterministic GitHub API responses for release CLI integration tests."""
+
+import json
+import os
+from pathlib import Path
+import sys
+
+expected = json.loads(os.environ["RELEASE_TEST_EXPECTED_REQUEST"])
+if sys.argv[1:] != expected:
+    raise SystemExit("unexpected GitHub request")
+data = json.loads(Path(os.environ["RELEASE_TEST_RESPONSE"]).read_text(encoding="utf-8"))
+if data is None:
+    raise SystemExit("release not found")
+if isinstance(data, str):
+    print(data)
+else:
+    print(json.dumps(data))

@@ -1,0 +1,19 @@
+package consumer
+
+import (
+	"context"
+
+	"github.com/longxi-go/gosr/pkg/event"
+)
+
+type E struct {
+	event.BaseEvent
+}
+
+type L struct{}
+
+func (L) OnEvent(context.Context, E) error {
+	return nil
+}
+
+var _ event.Listener[E] = L{}
