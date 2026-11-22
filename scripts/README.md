@@ -6,7 +6,7 @@ These Python scripts support repository checks, shared formatting and release
 validation. Run the Make targets from the repository root. Use Python 3.12 and a
 Go toolchain compatible with both [go.mod](../go.mod) and
 [tools/go.mod](../tools/go.mod). Formatting also requires Git and Bash.
-Checking a published root Release requires an authenticated GitHub CLI (`gh`).
+GitHub checks and publication require an authenticated GitHub CLI (`gh`).
 
 ## Entrypoints
 
@@ -15,6 +15,7 @@ Checking a published root Release requires an authenticated GitHub CLI (`gh`).
 | `golayout.py` | Resolve the golayout version declared by tools and delegate to its shared scripts | `setup`, `format`, `check-format`, `test-format`, `license-headers`, `check-license-headers` |
 | `tools.py` | Run tools-module commands with explicit source or published dependency policy | `test`, `race`, `vet`, `lint`, `verify-tools-source`, `verify-tools-published` |
 | `release.py` | Validate module tags, identities and release notes; optionally check the required root Release | `validate-release`, `prepare-tools-release` |
+| `publish_release.py` | Verify checked tag commits, create or reuse matching Releases, handle Latest visibility and check Pages prerequisites | Release and Pages workflows |
 | `go_module.py` | Read module metadata through `go mod edit -json`; imported by the other scripts | No CLI entrypoint |
 
 Common checks:
@@ -72,3 +73,10 @@ Tests select these fixtures through `GO` or `PATH` in child-process environments
 The fixtures cover wrapper behavior and failure paths. Shared formatting behavior
 is checked with real golayout through `make test-format` and `make check-format`;
 published dependency resolution requires `make check-published`.
+
+Publisher tests replace the external API boundary with controlled HTTP responses.
+They cover delayed Latest visibility, matching and conflicting Releases, root/tools
+Latest policy, uncertain creation results and tag-commit mismatches without network
+writes. `--check-pages` and `--require-latest` are read-only modes; they validate the
+selected root source and inspect live repository settings or the published Release.
+The publication mode requires the full commit SHA that passed source checks.

@@ -38,6 +38,19 @@ class ReleaseTests(unittest.TestCase):
             "0.1.0", release.validate_tag(self.root, "tools", "tools/v0.1.0")
         )
 
+    def test_payload_preserves_module_notes_and_root_tools_latest_policy(self):
+        for module, tag, title, latest in (
+            ("root", "v0.1.0", "gosr v0.1.0", "true"),
+            ("tools", "tools/v0.1.0", "gosr tools v0.1.0", "false"),
+        ):
+            with self.subTest(module=module):
+                self.write_notes(f"{tag}.md", title)
+                self.assertEqual({
+                    "tag_name": tag, "name": title,
+                    "body": f"# {title}\n\nInitial release.\n",
+                    "draft": False, "prerelease": False, "make_latest": latest,
+                }, release.release_payload(self.root, module, tag))
+
     def test_rejects_wrong_module_tag_prefix_and_unstable_versions(self):
         for module, tag in [
             ("root", "tools/v0.1.0"),

@@ -5,7 +5,7 @@
 这些 Python 脚本用于仓库检查、共享格式化和发布校验。从仓库根目录运行 Make 目标。
 使用 Python 3.12，以及同时满足 [go.mod](../go.mod) 和
 [tools/go.mod](../tools/go.mod) 要求的 Go 工具链。格式化还需要 Git 和 Bash。
-检查已发布的根模块 Release 时，需要已认证的 GitHub CLI（`gh`）。
+GitHub 检查和发布需要已认证的 GitHub CLI（`gh`）。
 
 ## 入口
 
@@ -14,6 +14,7 @@
 | `golayout.py` | 解析 tools 声明的 golayout 版本，调用其共享脚本 | `setup`、`format`、`check-format`、`test-format`、`license-headers`、`check-license-headers` |
 | `tools.py` | 按源码或已发布依赖策略执行 tools 模块命令 | `test`、`race`、`vet`、`lint`、`verify-tools-source`、`verify-tools-published` |
 | `release.py` | 校验模块标签、身份及发布说明；可选检查依赖的根模块 Release | `validate-release`、`prepare-tools-release` |
+| `publish_release.py` | 核对已检查的标签提交，创建或复用内容一致的 Release，处理 Latest 延迟并检查 Pages 前提 | Release 和 Pages 工作流 |
 | `go_module.py` | 通过 `go mod edit -json` 读取模块元数据，供其他脚本调用 | 无 CLI 入口 |
 
 常用检查：
@@ -62,3 +63,8 @@ golayout 依赖版本由 tools 声明。
 测试通过子进程环境中的 `GO` 或 `PATH` 选择这些替身，用于验证包装脚本及其失败处理。
 共享格式化行为通过 `make test-format` 和 `make check-format` 调用真实 golayout 检查；
 已发布依赖的解析须通过 `make check-published` 验证。
+
+发布器测试在外部 API 边界提供受控 HTTP 响应，覆盖 Latest 延迟、已有 Release 内容一致
+或冲突、根模块与 tools 的 Latest 策略、创建结果不确定、标签提交不一致等情况，不执行
+网络写入。`--check-pages` 和 `--require-latest` 为只读模式，校验选定根源码并查询远程仓库
+设置或已发布 Release。发布模式必须提供已通过源码检查的完整提交 SHA。

@@ -91,6 +91,19 @@ def validate_tag(root: Path, module: str, tag: str) -> str:
     return version[1:]
 
 
+def release_payload(root: Path, module: str, tag: str) -> dict:
+    """Keep module-specific titles, notes and explicit Latest ownership together."""
+    version = validate_tag(root, module, tag)
+    return {
+        "tag_name": tag,
+        "name": f"gosr{' tools' if module == 'tools' else ''} v{version}",
+        "body": (root / "docs/releases" / f"{tag}.md").read_text(encoding="utf-8"),
+        "draft": False,
+        "prerelease": False,
+        "make_latest": "true" if module == "root" else "false",
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])

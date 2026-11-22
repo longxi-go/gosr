@@ -3,12 +3,18 @@ name: Release
 on:
   push:
     tags: ['v*', 'tools/v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Stable root or tools tag to publish or verify
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ startsWith(inputs.release_tag || github.ref_name, 'tools/') && 'tools' || 'root' }}
   cancel-in-progress: false
 
 jobs:
@@ -16,12 +22,23 @@ jobs:
     name: Validate module tag and release notes
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pages: read
     outputs:
       module: ${{ steps.release.outputs.module }}
-      title: ${{ steps.release.outputs.title }}
+      tag: ${{ steps.release.outputs.tag }}
+      commit: ${{ steps.release.outputs.commit }}
     steps:
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
+      - name: Check out tagged source
+        uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.release_tag || github.ref_name }}
+          path: release-source
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
@@ -31,7 +48,7 @@ jobs:
         id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
@@ -41,8 +58,14 @@ jobs:
             module=tools
             flags+=(--check-root-release --repository "$GITHUB_REPOSITORY")
           fi
-          python3 scripts/release.py --module "$module" --tag "$RELEASE_TAG" \
+          python3 scripts/release.py --root release-source --module "$module" --tag "$RELEASE_TAG" \
             --github-output "$GITHUB_OUTPUT" "${flags[@]}"
+          if [[ "$module" == root ]]; then
+            python3 scripts/publish_release.py --root release-source --module root \
+              --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --check-pages
+          fi
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git -C release-source rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
   checks:
     name: Verify exact tagged source
@@ -50,6 +73,7 @@ jobs:
     uses: ./.github/workflows/quality.yml
     with:
       published_tools: ${{ needs.validate.outputs.module == 'tools' }}
+      source_ref: ${{ needs.validate.outputs.commit }}
 
   publish:
     name: Publish GitHub Release
@@ -58,34 +82,43 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
+    outputs:
+      latest: ${{ steps.release.outputs.latest }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      - name: Check out verified source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+          path: release-source
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
       - name: Publish maintained English release notes
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_TITLE: ${{ needs.validate.outputs.title }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.validate.outputs.commit }}
           RELEASE_MODULE: ${{ needs.validate.outputs.module }}
         run: |
           set -euo pipefail
-          latest=false
-          if [[ "$RELEASE_MODULE" == root ]]; then
-            latest=true
-          fi
-          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-            --verify-tag --latest="$latest" --title "$RELEASE_TITLE" \
-            --notes-file "docs/releases/$RELEASE_TAG.md"
+          python3 scripts/publish_release.py --root release-source --module "$RELEASE_MODULE" \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" \
+            --commit "$RELEASE_COMMIT" >> "$GITHUB_OUTPUT"
 
   deploy-site:
     name: Deploy released root documentation
     needs: [validate, publish]
-    if: needs.validate.outputs.module == 'root'
+    if: needs.validate.outputs.module == 'root' && needs.publish.outputs.latest == 'true'
     permissions:
       contents: read
       pages: write
       id-token: write
     uses: ./.github/workflows/docs-pages.yml
     with:
-      release_tag: ${{ github.ref_name }}
+      release_tag: ${{ needs.validate.outputs.tag }}

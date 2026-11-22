@@ -10,12 +10,16 @@ on:
       published_tools:
         type: boolean
         default: false
+      source_ref:
+        description: Immutable source commit selected by the release workflow
+        type: string
+        default: ''
 
 permissions:
   contents: read
 
 concurrency:
-  group: quality-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: quality-${{ github.event_name }}-${{ inputs.source_ref && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -40,6 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.source_ref }}
           persist-credentials: false
       - uses: actions/setup-go@v7
         with:
@@ -69,6 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.source_ref }}
           persist-credentials: false
       - uses: actions/setup-python@v7
         with:
