@@ -22,8 +22,10 @@ classDiagram
 公开契约位于 `pkg/environment`，独立于 IoC、事件实现和第三方依赖。
 
 - Value 是不可变值，类型限定为 null、string、bool、number、list、object。数字以校验过的
-  JSON number 文本保存，在转换为具体类型之前保留精度。构造器复制传入集合，访问器返回
-  独立副本。Value 的零值表示显式 null，与属性缺失和空字符串不同。
+  JSON number 文本保存，在转换为具体类型之前保留精度。构造器复制传入集合，`Items` 和
+  `Fields` 返回独立副本；`Len`、`Elements`、`Members` 直接读取不可变集合，不复制整个
+  容器。列表按索引顺序遍历，对象成员顺序未定义。遍历支持提前终止、重复调用及并发读取；
+  其他类型的遍历为空、长度为零。Value 的零值表示显式 null，与属性缺失和空字符串不同。
 - Origin 保存 Source、Resource、Key 和可选 Line、Column，记录来源而不携带敏感值。
   Property 关联 Value 与 Origin。
 - PropertySource 提供 Name、原始 Lookup 和排序后的 Keys 副本。属性源是不可变的内存快照，

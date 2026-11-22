@@ -101,3 +101,16 @@ func ExampleError() {
 	// true
 	// environment: source_failed: key=db.password
 }
+
+func ExampleValue_Elements() {
+	values := environment.List(environment.String("first"), environment.String("second"))
+	fmt.Println(values.Len())
+	for index, item := range values.Elements() {
+		text, _ := item.Scalar()
+		fmt.Println(index, text)
+	}
+	// Output:
+	// 2
+	// 0 first
+	// 1 second
+}

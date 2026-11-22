@@ -42,7 +42,7 @@ const (
 
 // Value is a closed immutable property value safe to share across snapshots and
 // goroutines. Its zero value is null. Collections are detached on construction
-// and access; nested Values may share storage because no mutation is exposed.
+// and copy-returning access; read-only iterators share immutable storage.
 // Number equality compares retained text, so 1 and 1.0 remain distinct.
 type Value struct {
 	kind   Kind

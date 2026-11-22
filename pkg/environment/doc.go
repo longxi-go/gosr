@@ -26,7 +26,9 @@
 // Placeholder tokens and DefaultProfile name the shared grammar and fallback;
 // ValueDecoderFunc admits typed conversions without prescribing their strategy.
 //
-// Value collections detach on input/output and may be shared concurrently.
+// Value collections detach on construction and Items/Fields access. Len,
+// Elements and Members inspect immutable storage without full collection copies.
+// These values and their read-only iterators may be shared concurrently.
 // Published environments and snapshots support concurrent readers; typed binding
 // is transactional, with caller-owned target synchronization. These interfaces
 // specify runtime obligations for implementations, not an engine conformance

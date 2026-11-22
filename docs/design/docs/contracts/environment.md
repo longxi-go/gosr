@@ -26,7 +26,11 @@ implementations nor third-party packages.
 
 - `Value` is a closed immutable null/string/bool/number/list/object value. Scalar
   numbers retain validated JSON-number text, preserving precision until typed
-  conversion. Constructors copy collections; accessors return detached collections.
+  conversion. Constructors copy collections; `Items` and `Fields` return detached
+  copies. `Len`, `Elements` and `Members` inspect immutable collections without
+  copying them. List traversal preserves index order; object traversal has no
+  defined order. Iteration supports early termination, repetition and concurrent
+  readers; other kinds produce empty traversals and have length zero.
   Zero Value is explicit null, distinct from a missing property and an empty string.
 - `Origin` records Source, Resource, Key and optional Line/Column. `Property`
   combines Value and Origin. Origin identifies provenance, never a secret value.
