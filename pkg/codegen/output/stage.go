@@ -25,6 +25,12 @@ import (
 	"github.com/longxi-go/gosr/pkg/codegen/artifact"
 )
 
+const (
+	stagingFilePattern   = ".codegen-*"
+	stageFormat          = "stage %s: %w"
+	stagingCleanupFormat = "staging cleanup: %w"
+)
+
 type stagedFiles map[string]string
 
 func (s stagedFiles) stage(ctx context.Context, files []artifact.File) error {
@@ -32,14 +38,14 @@ func (s stagedFiles) stage(ctx context.Context, files []artifact.File) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := os.MkdirAll(filepath.Dir(file.Path), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(file.Path), parentPermissions); err != nil {
 			return err
 		}
 		mode, err := destinationMode(file.Path)
 		if err != nil {
 			return err
 		}
-		temp, err := os.CreateTemp(filepath.Dir(file.Path), ".codegen-*")
+		temp, err := os.CreateTemp(filepath.Dir(file.Path), stagingFilePattern)
 		if err != nil {
 			return err
 		}
@@ -48,7 +54,7 @@ func (s stagedFiles) stage(ctx context.Context, files []artifact.File) error {
 		modeErr := temp.Chmod(mode)
 		closeErr := temp.Close()
 		if err := errors.Join(writeErr, modeErr, closeErr); err != nil {
-			return fmt.Errorf("stage %s: %w", file.Path, err)
+			return fmt.Errorf(stageFormat, file.Path, err)
 		}
 	}
 	return nil
@@ -63,7 +69,7 @@ func (s stagedFiles) cleanup() error {
 	sort.Strings(paths)
 	for _, path := range paths {
 		if err := os.Remove(s[path]); err != nil && !os.IsNotExist(err) {
-			result = errors.Join(result, fmt.Errorf("staging cleanup: %w", err))
+			result = errors.Join(result, fmt.Errorf(stagingCleanupFormat, err))
 		}
 	}
 	return result

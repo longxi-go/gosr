@@ -18,6 +18,9 @@
 // Definitions contain no constructors, reflection tokens or instance state.
 // Implementations own graph binding, execution and resources; consumers depend
 // only on the lookup, registry, context or scope capability they actually need.
+// Named initialization prerequisites are separate from injected dependencies.
+// Their completion covers construction and Init, not Start or business readiness;
+// implementations validate ownership and release same-owner dependents first.
 // ContextRefreshed and ContextClosing describe optional event integration through
 // the independent event package; ApplicationContext itself is not expanded.
 // See docs/design/docs/contracts/ioc-contracts.md for normative lifecycle and failure rules.

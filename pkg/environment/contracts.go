@@ -49,7 +49,9 @@ type PropertySource interface {
 // substitutes for an independently addressed app.port. Keys is sorted/detached.
 // Lookup recursively resolves strings within lists/objects and retains origin.
 // Resolve strictly expands ${key}, ${key:default}, recursive references and nested
-// defaults; \${...} remains literal. Defaults apply only to missing keys; null or
+// defaults and nested keys such as ${${stage}.url:localhost}. Keys expand before
+// lookup; nested key expansion shares cycle, depth, output and cancellation
+// limits with values and defaults. Escaped \${...} remains literal without reparsing. Defaults apply only to missing keys; null or
 // composite references fail. Missing references, cycles, malformed syntax and
 // documented finite nesting/output limits return classified errors preserving
 // causes without printing values. Lookup rejects invalid keys.

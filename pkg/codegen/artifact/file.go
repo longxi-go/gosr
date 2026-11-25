@@ -16,9 +16,15 @@ package artifact
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
+)
+
+const (
+	artifactPathIsEmptyMessage = "artifact path is empty"
+	duplicateArtifactFormat    = "duplicate artifact %s"
 )
 
 // Kind distinguishes Go overlays from non-Go publication assets.
@@ -50,11 +56,11 @@ func New(files ...File) (*Set, error) {
 	seen := make(map[string]bool)
 	for _, file := range files {
 		if file.Path == "" {
-			return nil, fmt.Errorf("artifact path is empty")
+			return nil, errors.New(artifactPathIsEmptyMessage)
 		}
 		file.Path = filepath.Clean(file.Path)
 		if seen[file.Path] {
-			return nil, fmt.Errorf("duplicate artifact %s", file.Path)
+			return nil, fmt.Errorf(duplicateArtifactFormat, file.Path)
 		}
 		seen[file.Path] = true
 		file.Content = bytes.Clone(file.Content)

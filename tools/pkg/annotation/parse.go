@@ -15,13 +15,19 @@
 package annotation
 
 import (
-	"fmt"
 	"go/ast"
 	"go/token"
 	"strings"
 
 	"github.com/longxi-go/gosr/pkg/codegen/diagnostic"
 	"sigs.k8s.io/controller-tools/pkg/markers"
+)
+
+const (
+	annotationPhase                 = "annotation"
+	lineCommentPrefix               = "//"
+	duplicateMarkerMessage          = "duplicate marker "
+	unknownOrMisplacedMarkerMessage = "unknown or misplaced marker "
 )
 
 // Parse ignores unrelated comments, rejects unknown/misplaced/duplicate markers
@@ -31,12 +37,13 @@ func (r *Registry) Parse(fs *token.FileSet, group *ast.CommentGroup, target mark
 	if group == nil {
 		return result, nil
 	}
-	seen := make(map[string]bool)
+	seen := make(map[markerKey]bool)
 	for _, comment := range group.List {
-		if !strings.HasPrefix(comment.Text, "//") {
+		text, lineComment := strings.CutPrefix(comment.Text, lineCommentPrefix)
+		if !lineComment {
 			continue
 		}
-		raw := strings.TrimSpace(strings.TrimPrefix(comment.Text, "//"))
+		raw := strings.TrimSpace(text)
 		if !strings.HasPrefix(raw, r.prefix) {
 			continue
 		}
@@ -46,15 +53,18 @@ func (r *Registry) Parse(fs *token.FileSet, group *ast.CommentGroup, target mark
 		}
 		definition := r.registry.Lookup(raw, target)
 		if definition == nil {
-			return nil, diagnostic.Wrap("annotation", pos, "unknown or misplaced marker "+raw, nil)
+			return nil, diagnostic.Wrap(annotationPhase, pos, unknownOrMisplacedMarkerMessage+raw, nil)
 		}
 		value, err := definition.Parse(raw)
 		if err != nil {
-			return nil, diagnostic.Wrap("annotation", pos, raw, err)
+			return nil, diagnostic.Wrap(annotationPhase, pos, raw, err)
 		}
-		key := fmt.Sprintf("%d:%s", target, definition.Name)
+		key := markerKey{
+			target: target,
+			name:   definition.Name,
+		}
 		if seen[key] && !r.repeat[key] {
-			return nil, diagnostic.Wrap("annotation", pos, "duplicate marker "+definition.Name, nil)
+			return nil, diagnostic.Wrap(annotationPhase, pos, duplicateMarkerMessage+definition.Name, nil)
 		}
 		seen[key] = true
 		result = append(result, Value{

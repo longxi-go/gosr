@@ -19,6 +19,10 @@ import (
 	"strings"
 )
 
+const (
+	detailSeparator = ": "
+)
+
 // Error preserves a machine-readable phase, source position and original cause
 // without requiring consumers to classify failures by matching display strings.
 type Error struct {
@@ -52,7 +56,7 @@ func (e *Error) Error() string {
 	if e.Cause != nil {
 		parts = append(parts, e.Cause.Error())
 	}
-	return strings.Join(parts, ": ")
+	return strings.Join(parts, detailSeparator)
 }
 
 // Unwrap retains underlying parser, template and filesystem error identities.

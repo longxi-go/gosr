@@ -33,7 +33,10 @@ func TestReferencesAndConflicts(t *testing.T) {
 	s.Add("example/z", "z")
 	s.Type(types.NewSlice(types.NewNamed(types.NewTypeName(0, types.NewPackage("example/a", "a"), "Value", nil), types.Typ[types.Int], nil)))
 	list, err := s.List()
-	if err != nil || len(list) != 2 || list[0].Path != "example/a" || list[1].Alias != "z" {
+	if err != nil ||
+		len(list) != 2 ||
+		list[0].Path != "example/a" ||
+		list[1].Alias != "z" {
 		t.Fatalf("%v %v", list, err)
 	}
 	s.Add("example/other", "a")

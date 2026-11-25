@@ -42,7 +42,10 @@ func TestPositionUnknownDuplicateAndTarget(t *testing.T) {
 	}
 	group := annotation.TypeComments(f.Decls[0].(*ast.GenDecl), f.Decls[0].(*ast.GenDecl).Specs[0].(*ast.TypeSpec))
 	values, err := r.Parse(fs, group, markers.DescribesType)
-	if err != nil || len(values) != 1 || values[0].Value != "hello" || values[0].Position.Line != 2 {
+	if err != nil ||
+		len(values) != 1 ||
+		values[0].Value != "hello" ||
+		values[0].Position.Line != 2 {
 		t.Fatal(values, err)
 	}
 	if _, err := r.Parse(fs, group, markers.DescribesField); err == nil {

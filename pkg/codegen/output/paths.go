@@ -19,12 +19,16 @@ import (
 	"path/filepath"
 )
 
+const (
+	generatedFileIsAParentOfFormat = "generated file %s is a parent of %s"
+)
+
 // A generated file cannot also serve as a directory for another planned file.
 // Detect this before staging can create directories or publish unrelated bytes.
 func plannedParents(path string, desired map[string]bool) error {
 	for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
 		if desired[parent] {
-			return fmt.Errorf("generated file %s is a parent of %s", parent, path)
+			return fmt.Errorf(generatedFileIsAParentOfFormat, parent, path)
 		}
 		if filepath.Dir(parent) == parent {
 			return nil

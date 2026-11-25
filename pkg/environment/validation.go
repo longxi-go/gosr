@@ -16,6 +16,12 @@ package environment
 
 import "strings"
 
+const (
+	expectedASCIIProfileNameMessage                        = "expected ASCII profile name"
+	expectedNonemptyKeyWithoutSurroundingWhitespaceMessage = "expected nonempty key without surrounding whitespace"
+	expectedNonemptyProfileNameMessage                     = "expected nonempty profile name"
+)
+
 // ValidateKey admits nonempty exact addresses without surrounding Unicode
 // whitespace. Interior whitespace and punctuation are literal; sources may
 // normalize before publication, but resolvers must not infer aliases.
@@ -23,7 +29,7 @@ func ValidateKey(key string) error {
 	if key == "" || strings.TrimSpace(key) != key {
 		return &Error{
 			Code:    InvalidKey,
-			Message: "expected nonempty key without surrounding whitespace",
+			Message: expectedNonemptyKeyWithoutSurroundingWhitespaceMessage,
 		}
 	}
 	return nil
@@ -35,21 +41,24 @@ func ValidateKey(key string) error {
 func ValidateProfile(profile string) error {
 	for i := 0; i < len(profile); i++ {
 		c := profile[i]
-		if c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' {
+		if (c >= 'a' && c <= 'z') ||
+			(c >= 'A' && c <= 'Z') ||
+			(c >= '0' && c <= '9') {
 			continue
 		}
-		if i > 0 && (c == '.' || c == '_' || c == '-') {
+		if i > 0 &&
+			(c == '.' || c == '_' || c == '-') {
 			continue
 		}
 		return &Error{
 			Code:    InvalidProfile,
-			Message: "expected ASCII profile name",
+			Message: expectedASCIIProfileNameMessage,
 		}
 	}
 	if profile == "" {
 		return &Error{
 			Code:    InvalidProfile,
-			Message: "expected nonempty profile name",
+			Message: expectedNonemptyProfileNameMessage,
 		}
 	}
 	return nil

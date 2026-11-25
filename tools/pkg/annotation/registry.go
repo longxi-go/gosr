@@ -15,12 +15,21 @@
 package annotation
 
 import (
+	"errors"
 	"fmt"
 	"go/token"
 	"strings"
 	"unicode"
 
 	"sigs.k8s.io/controller-tools/pkg/markers"
+)
+
+const (
+	markerPrefix                    = "+"
+	nilMarkerSampleFormat           = "marker %s sample is nil; use struct{} for a marker without arguments"
+	annotationPrefixIsEmptyMessage  = "annotation prefix is empty"
+	duplicateMarkerDefinitionFormat = "duplicate marker definition %s"
+	invalidAnnotationPrefixMessage  = "annotation prefix must start with '+' and contain no whitespace"
 )
 
 // Definition leaves marker schema, target adaptation and repetition policy in the
@@ -49,31 +58,40 @@ type Value struct {
 type Registry struct {
 	prefix   string
 	registry *markers.Registry
-	repeat   map[string]bool
+	repeat   map[markerKey]bool
+}
+
+// markerKey preserves the schema's target/name identity without string encoding.
+type markerKey struct {
+	target markers.TargetType
+	name   string
 }
 
 // New rejects duplicate schemas instead of relying on map overwrite order.
 // The prefix starts with '+' and contains no whitespace; '+' selects all markers.
 func New(prefix string, definitions []Definition) (*Registry, error) {
 	if prefix == "" {
-		return nil, fmt.Errorf("annotation prefix is empty")
+		return nil, errors.New(annotationPrefixIsEmptyMessage)
 	}
-	if !strings.HasPrefix(prefix, "+") || strings.IndexFunc(prefix, unicode.IsSpace) >= 0 {
-		return nil, fmt.Errorf("annotation prefix must start with '+' and contain no whitespace")
+	if !strings.HasPrefix(prefix, markerPrefix) || strings.IndexFunc(prefix, unicode.IsSpace) >= 0 {
+		return nil, errors.New(invalidAnnotationPrefixMessage)
 	}
 	r := &Registry{
 		prefix:   prefix,
 		registry: &markers.Registry{},
-		repeat:   make(map[string]bool),
+		repeat:   make(map[markerKey]bool),
 	}
-	seen := make(map[string]bool)
+	seen := make(map[markerKey]bool)
 	for _, d := range definitions {
 		if d.Sample == nil {
-			return nil, fmt.Errorf("marker %s sample is nil; use struct{} for a marker without arguments", d.Name)
+			return nil, fmt.Errorf(nilMarkerSampleFormat, d.Name)
 		}
-		key := fmt.Sprintf("%d:%s", d.Target, d.Name)
+		key := markerKey{
+			target: d.Target,
+			name:   d.Name,
+		}
 		if seen[key] {
-			return nil, fmt.Errorf("duplicate marker definition %s", d.Name)
+			return nil, fmt.Errorf(duplicateMarkerDefinitionFormat, d.Name)
 		}
 		seen[key] = true
 		if err := r.registry.Define(d.Name, d.Target, d.Sample); err != nil {

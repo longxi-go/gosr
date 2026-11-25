@@ -89,7 +89,9 @@ func TestValueIterationKindsAndConcurrentReaders(t *testing.T) {
 		List(),
 		Object(nil),
 	} {
-		if value.Len() != 0 || len(collectElements(value.Elements())) != 0 || len(collectMembers(value.Members())) != 0 {
+		if value.Len() != 0 ||
+			len(collectElements(value.Elements())) != 0 ||
+			len(collectMembers(value.Members())) != 0 {
 			t.Fatal("empty or noncollection traversal produced members")
 		}
 	}

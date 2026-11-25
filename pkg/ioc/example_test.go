@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/longxi-go/gosr/pkg/environment"
 	"github.com/longxi-go/gosr/pkg/event"
 	"github.com/longxi-go/gosr/pkg/ioc"
 )
@@ -29,6 +30,7 @@ func ExampleBeanDefinition() {
 		Name:      "readDB",
 		Aliases:   []string{"primaryDB"},
 		Contracts: []ioc.Contract{"example.Database"},
+		DependsOn: []string{"databaseMigration"},
 		Scope:     ioc.Singleton,
 	}
 	fmt.Println(definition.Validate())
@@ -111,4 +113,43 @@ func ExampleLease() {
 	// Output:
 	// owned allocation
 	// 0
+}
+
+// exampleEnvironment provides only deterministic contract behavior for this example.
+type exampleEnvironment struct{}
+
+func (exampleEnvironment) Lookup(string) (environment.Property, bool, error) {
+	return environment.Property{}, false, nil
+}
+
+func (exampleEnvironment) Resolve(text string) (string, error) {
+	return text, nil
+}
+
+func (exampleEnvironment) Keys() []string {
+	return nil
+}
+
+func (exampleEnvironment) ActiveProfiles() []string {
+	return []string{"development"}
+}
+
+func (exampleEnvironment) DefaultProfiles() []string {
+	return []string{"default"}
+}
+
+func (exampleEnvironment) AcceptsProfiles(names ...string) (bool, error) {
+	return false, nil
+}
+
+type exampleEnvironmentOwner struct{}
+
+func (exampleEnvironmentOwner) Environment() environment.Environment {
+	return exampleEnvironment{}
+}
+
+func ExampleEnvironmentAccessor() {
+	var accessor ioc.EnvironmentAccessor = exampleEnvironmentOwner{}
+	fmt.Println(accessor.Environment().ActiveProfiles())
+	// Output: [development]
 }

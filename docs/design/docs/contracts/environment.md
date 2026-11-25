@@ -80,6 +80,10 @@ invalid. The default profile is `default` when no defaults are specified. Profil
 selection is bootstrap input, fixed within a published snapshot; an ordinary
 remote property cannot silently redefine application topology.
 
+`ParseProfilePredicate` validates a name or `!name` and returns the profile name
+and negation flag. Annotation processors and Environment implementations can use
+it to apply the same predicate grammar.
+
 ## Atomic updates and extension boundaries
 
 A captured snapshot remains immutable while its owner publishes later revisions.
@@ -114,3 +118,5 @@ Configuration change events may use the separate gosr event contract. This domai
 does not define an event bus, listener discovery or asynchronous delivery. Refresh
 notifications follow commit: delivery failure neither rolls back external effects
 nor means that committed properties have been reverted.
+
+Nested placeholder keys such as `${${stage}.url:localhost}` expand before lookup. Defaults apply only if the expanded key is missing. Escaped placeholder text is literal and is never reparsed; key expansion shares cycle, finite depth/output, and cancellation limits with values and defaults.

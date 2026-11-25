@@ -16,11 +16,15 @@ package output
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"path/filepath"
 	"sort"
 
 	"github.com/longxi-go/gosr/pkg/codegen/artifact"
+)
+
+const (
+	stalePathIsEmptyMessage = "stale path is empty"
 )
 
 type commitPlan struct {
@@ -56,7 +60,7 @@ func prepareCommit(ctx context.Context, set *artifact.Set, options Options) (com
 	stale := make(map[string]bool)
 	for _, path := range options.Stale {
 		if path == "" {
-			return plan, fmt.Errorf("stale path is empty")
+			return plan, errors.New(stalePathIsEmptyMessage)
 		}
 		path = filepath.Clean(path)
 		if !desired[path] {

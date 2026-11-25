@@ -20,6 +20,12 @@ import (
 	"strings"
 )
 
+const (
+	stepErrorFormat                 = "%s: %w"
+	pipelineStepHasABlankNameFormat = "pipeline step %d has a blank name"
+	pipelineStepIsNilFormat         = "pipeline step %d is nil"
+)
+
 // Run executes steps in caller-supplied order against the same state value. Pass
 // a pointer when steps need to mutate shared invocation state. Cancellation is
 // checked between steps; each step remains responsible for observing it while
@@ -30,14 +36,14 @@ func Run[S any](ctx context.Context, state S, steps ...Step[S]) error {
 			return err
 		}
 		if step == nil {
-			return fmt.Errorf("pipeline step %d is nil", index)
+			return fmt.Errorf(pipelineStepIsNilFormat, index)
 		}
 		name := step.Name()
 		if strings.TrimSpace(name) == "" {
-			return fmt.Errorf("pipeline step %d has a blank name", index)
+			return fmt.Errorf(pipelineStepHasABlankNameFormat, index)
 		}
 		if err := step.Execute(ctx, state); err != nil {
-			return fmt.Errorf("%s: %w", name, err)
+			return fmt.Errorf(stepErrorFormat, name, err)
 		}
 	}
 	return nil

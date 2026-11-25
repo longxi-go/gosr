@@ -19,6 +19,15 @@ import (
 	"strings"
 )
 
+const (
+	beanLabel            = "bean="
+	errorDomain          = "ioc"
+	errorSeparator       = ": "
+	nilErrorText         = "<nil>"
+	pathSeparator        = " -> "
+	sourcePositionFormat = "%s:%d"
+)
+
 // Code classifies failures independently of diagnostic wording or an engine.
 type Code string
 
@@ -48,17 +57,17 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e == nil {
-		return "<nil>"
+		return nilErrorText
 	}
-	parts := []string{"ioc", string(e.Code)}
+	parts := []string{errorDomain, string(e.Code)}
 	if e.Bean != "" {
-		parts = append(parts, "bean="+e.Bean)
+		parts = append(parts, beanLabel+e.Bean)
 	}
 	if e.Source.File != "" {
-		parts = append(parts, fmt.Sprintf("%s:%d", e.Source.File, e.Source.Line))
+		parts = append(parts, fmt.Sprintf(sourcePositionFormat, e.Source.File, e.Source.Line))
 	}
 	if len(e.Path) > 0 {
-		parts = append(parts, strings.Join(e.Path, " -> "))
+		parts = append(parts, strings.Join(e.Path, pathSeparator))
 	}
 	if e.Message != "" {
 		parts = append(parts, e.Message)
@@ -66,7 +75,7 @@ func (e *Error) Error() string {
 	if e.Cause != nil {
 		parts = append(parts, e.Cause.Error())
 	}
-	return strings.Join(parts, ": ")
+	return strings.Join(parts, errorSeparator)
 }
 
 // Is compares semantic codes without depending on a particular engine's text.

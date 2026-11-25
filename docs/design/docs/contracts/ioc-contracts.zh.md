@@ -23,7 +23,7 @@ classDiagram
 ```
 
 `BeanDefinition` 保存候选 Bean 的元数据副本，包含 ID、Name、Aliases、Contracts、Qualifiers、
-Dependencies、Scope、Primary、Lazy、Order 和 Source。定义不等同于 Go 类型：多个定义
+Dependencies、DependsOn、Scope、Primary、Lazy、Order 和 Source。定义不等同于 Go 类型：多个定义
 可以暴露相同契约，一个定义也可以暴露多个契约，后者仍共享实例与清理身份。
 Contract 是不透明字符串，按完整内容精确匹配；gosr 不将具体编码规定为跨生成器 ABI。
 
@@ -84,7 +84,7 @@ ContractMismatch，缺少激活名称为 MissingBean。不得改选其他名称�
 失败后进入 Failed。Close 可以重复调用，并可从任意状态经 Closing 进入 Closed。
 各上下文拥有独立的单例状态；原型在每次解析时新建，别名共享同一对象身份。
 
-Start 必须在分配对象或执行用户工厂之前，拒绝全部激活 Bean 的直接创建依赖和顺序依赖环。
+Start 必须在分配对象或执行用户工厂之前，拒绝全部激活 Bean 的直接创建依赖和初始化前置依赖环。
 Deferred 只延后访问，不允许提前暴露对象；动态或重入等待必须报错，不能死锁。
 普通 lazy 对象在首次创建时执行 Init，需要参与应用 Start 的对象必须是
 eager singleton。执行能力标志保存在实现方的配方中。构造器返回错误且未交出对象时，
@@ -94,6 +94,32 @@ Scope.Close 释放缓存引用，应用不得无限期保留普通非资源原�
 对象须在分配和组装后执行 Init，初始化成功后才可暴露。应用激活必须在进入 Running 之前完成。
 清理按依赖所有权的逆序进行，先 Stop 再 Destroy。Init 失败的对象仍需 Destroy，
 尝试过 Start 的对象可以执行 Stop。
+
+## 初始化前置依赖
+
+```mermaid
+sequenceDiagram
+    participant C as 容器
+    participant P as 前置 Bean
+    participant D as 依赖方 Bean
+    C->>P: 构造并执行 Init
+    P-->>C: 初始化成功
+    C->>D: 构造并执行 Init
+```
+
+`DependsOn` 通过 Bean 主名称或别名引用初始化前置依赖，不占用注入端口。名称不得为空白、
+重复或指向定义自身的名称及别名。元数据校验不要求目标位于同一注册批次；实现方解析激活
+目标，并在构造前拒绝缺失目标、依赖环及不支持的所有权关系。被条件排除的依赖方不产生
+前置依赖要求。
+
+全部前置 Bean 必须在依赖方工厂执行前完成构造和 Init，包括 lazy 目标；失败时不得调用
+依赖方工厂。lazy 依赖方仅在创建时要求前置依赖。列表不规定独立前置 Bean 之间的顺序，
+也不等待 Start、后台任务或业务就绪。延迟注入仍保持延迟访问。
+同一所有者内先清理依赖方，再清理前置 Bean；共享目标仍归其所有者管理。
+实现方应明确支持的作用域组合和跨所有者关闭阶段，不得隐式创建作用域或资源租约。
+
+`Primary` 只在激活且匹配的候选中选择单值依赖，不裁决定义是否满足注册条件。
+`Order` 用于集合排序，不表示初始化前置依赖或条件优先级。
 
 ## 作用域与所有权
 
@@ -125,3 +151,5 @@ Close 拒绝新工作和迟到的发布。
 [事件与排序](events-ordering.zh.md)规定可选事件集成。ApplicationContext 不要求 Publisher。
 ContextRefreshed 和 ContextClosing 不携带应用或请求引用。BeanDefinition.Order 和集合绑定
 仍按元数据排序；运行时 Ordered 扩展排序不替代此规则。
+
+`EnvironmentAccessor` 是独立于 `ApplicationContext` 的可选能力。`Environment() environment.Environment` 返回关联的 Environment 所有者；即使上下文构建使用固定快照，该所有者仍可能是实时环境。访问不会转移关闭所有权。

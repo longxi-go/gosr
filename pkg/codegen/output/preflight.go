@@ -21,6 +21,12 @@ import (
 	"path/filepath"
 )
 
+const (
+	nonRegularOutputFormat            = "generated output destination is not a regular file: %s"
+	outputParentIsNotADirectoryFormat = "output parent is not a directory: %s"
+	refuseToModifyUnownedFileFormat   = "refuse to modify unowned file %s"
+)
+
 func readOwned(path string, owns OwnershipFunc) ([]byte, bool, error) {
 	info, err := os.Lstat(path)
 	if os.IsNotExist(err) {
@@ -30,14 +36,14 @@ func readOwned(path string, owns OwnershipFunc) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	if !info.Mode().IsRegular() {
-		return nil, false, fmt.Errorf("generated output destination is not a regular file: %s", path)
+		return nil, false, fmt.Errorf(nonRegularOutputFormat, path)
 	}
 	current, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false, err
 	}
 	if owns == nil || !owns(path, bytes.Clone(current)) {
-		return nil, false, fmt.Errorf("refuse to modify unowned file %s", path)
+		return nil, false, fmt.Errorf(refuseToModifyUnownedFileFormat, path)
 	}
 	return current, true, nil
 }
@@ -46,7 +52,7 @@ func parentDirectories(path string) error {
 	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
 		info, err := os.Lstat(dir)
 		if err == nil && !info.IsDir() {
-			return fmt.Errorf("output parent is not a directory: %s", dir)
+			return fmt.Errorf(outputParentIsNotADirectoryFormat, dir)
 		}
 		if err != nil && !os.IsNotExist(err) {
 			return err

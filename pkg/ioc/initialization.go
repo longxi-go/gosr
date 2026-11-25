@@ -1,0 +1,45 @@
+// Copyright © 2026-present the longxi-go/gosr authors. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package ioc
+
+import "slices"
+
+const (
+	initializationPrerequisitesMessage = "initialization prerequisites: "
+	selfPrerequisiteMessage            = "initialization prerequisite refers to its own name or alias"
+)
+
+func validateInitializationReferences(d BeanDefinition) error {
+	message := ""
+	if err := unique(d.DependsOn); err != nil {
+		message = initializationPrerequisitesMessage + err.Error()
+	} else {
+		for _, name := range d.DependsOn {
+			if name == d.Name || slices.Contains(d.Aliases, name) {
+				message = selfPrerequisiteMessage
+				break
+			}
+		}
+	}
+	if message == "" {
+		return nil
+	}
+	return &Error{
+		Code:    InvalidDefinition,
+		Bean:    d.ID,
+		Source:  d.Source,
+		Message: message,
+	}
+}

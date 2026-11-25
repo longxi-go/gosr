@@ -31,7 +31,10 @@ func TestPositionAndCause(t *testing.T) {
 		Column:   3,
 	}, "Port", cause)
 	var d *diagnostic.Error
-	if !errors.As(err, &d) || !errors.Is(err, cause) || d.Phase != "analyze" || !strings.Contains(err.Error(), "config.go:7:3") {
+	if !errors.As(err, &d) ||
+		!errors.Is(err, cause) ||
+		d.Phase != "analyze" ||
+		!strings.Contains(err.Error(), "config.go:7:3") {
 		t.Fatal(err)
 	}
 }

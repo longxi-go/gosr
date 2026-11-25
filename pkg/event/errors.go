@@ -16,6 +16,14 @@ package event
 
 import "strings"
 
+const (
+	errorDomain    = "event"
+	errorSeparator = ": "
+	listenerLabel  = "listener="
+	nilErrorText   = "<nil>"
+	pathSeparator  = " -> "
+)
+
 // Code classifies publication failures independently of a runtime's diagnostics.
 type Code string
 
@@ -45,14 +53,14 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e == nil {
-		return "<nil>"
+		return nilErrorText
 	}
-	parts := []string{"event", string(e.Code)}
+	parts := []string{errorDomain, string(e.Code)}
 	if e.Listener != "" {
-		parts = append(parts, "listener="+e.Listener)
+		parts = append(parts, listenerLabel+e.Listener)
 	}
 	if len(e.Path) > 0 {
-		parts = append(parts, strings.Join(e.Path, " -> "))
+		parts = append(parts, strings.Join(e.Path, pathSeparator))
 	}
 	if e.Message != "" {
 		parts = append(parts, e.Message)
@@ -60,7 +68,7 @@ func (e *Error) Error() string {
 	if e.Cause != nil {
 		parts = append(parts, e.Cause.Error())
 	}
-	return strings.Join(parts, ": ")
+	return strings.Join(parts, errorSeparator)
 }
 
 // Is compares semantic classification while leaving provenance diagnostic-only.

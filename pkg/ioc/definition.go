@@ -15,9 +15,29 @@
 package ioc
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
+)
+
+const (
+	aliasesLabel                               = "aliases: "
+	contractsLabel                             = "contracts: "
+	qualifiersLabel                            = "qualifiers: "
+	aContractOrNameIsRequiredMessage           = "a contract or name is required"
+	anAliasMustDifferFromThePrimaryNameMessage = "an alias must differ from the primary name"
+	atLeastOneExposedContractIsRequiredMessage = "at least one exposed contract is required"
+	blankTokenMessage                          = "blank token"
+	dependencyAccessMustBeExplicitFormat       = "dependency %d: access must be explicit"
+	dependencyCardinalityMustBeExplicitFormat  = "dependency %d: cardinality must be explicit"
+	dependencyFormat                           = "dependency %d: %v"
+	dependencyNegativeSourceLineFormat         = "dependency %d: negative source line"
+	duplicateTokenFormat                       = "duplicate token %q"
+	identityAndNameMustBeNonblankMessage       = "identity and name must be nonblank"
+	scopeMustBeNonblankMessage                 = "scope must be nonblank"
+	sourceLineMustBeNonnegativeMessage         = "source line must be nonnegative"
+	suppliedConstraintsMustBeNonblankMessage   = "supplied constraints must be nonblank"
 )
 
 // Contract identifies an explicitly exposed capability. Its encoding is opaque
@@ -84,10 +104,16 @@ type BeanDefinition struct {
 	Aliases, Qualifiers []string
 	Contracts           []Contract
 	Dependencies        []Dependency
-	Scope               ScopeID
-	Primary, Lazy       bool
-	Order               int
-	Source              Source
+	// DependsOn names initialization prerequisites through primary names or aliases.
+	// They finish construction and Init before this definition's factory runs;
+	// they do not occupy injection ports or imply Start/readiness guarantees.
+	// Implementations reject unresolved targets, cycles and unsupported ownership
+	// relations, and release same-owner dependents before their prerequisites.
+	DependsOn     []string
+	Scope         ScopeID
+	Primary, Lazy bool
+	Order         int
+	Source        Source
 }
 
 // Validate checks declaration invariants without choosing an implementation.
@@ -101,41 +127,44 @@ func (d BeanDefinition) Validate() error {
 		}
 	}
 	if strings.TrimSpace(d.ID) == "" || strings.TrimSpace(d.Name) == "" {
-		return invalid("identity and name must be nonblank", d.Source)
+		return invalid(identityAndNameMustBeNonblankMessage, d.Source)
 	}
 	if len(d.Contracts) == 0 {
-		return invalid("at least one exposed contract is required", d.Source)
+		return invalid(atLeastOneExposedContractIsRequiredMessage, d.Source)
 	}
 	if err := unique(d.Contracts); err != nil {
-		return invalid("contracts: "+err.Error(), d.Source)
+		return invalid(contractsLabel+err.Error(), d.Source)
 	}
 	if err := unique(d.Aliases); err != nil {
-		return invalid("aliases: "+err.Error(), d.Source)
+		return invalid(aliasesLabel+err.Error(), d.Source)
 	}
 	if slices.Contains(d.Aliases, d.Name) {
-		return invalid("an alias must differ from the primary name", d.Source)
+		return invalid(anAliasMustDifferFromThePrimaryNameMessage, d.Source)
 	}
 	if err := unique(d.Qualifiers); err != nil {
-		return invalid("qualifiers: "+err.Error(), d.Source)
+		return invalid(qualifiersLabel+err.Error(), d.Source)
 	}
 	if strings.TrimSpace(string(d.Scope)) == "" {
-		return invalid("scope must be nonblank", d.Source)
+		return invalid(scopeMustBeNonblankMessage, d.Source)
 	}
 	if d.Source.Line < 0 {
-		return invalid("source line must be nonnegative", d.Source)
+		return invalid(sourceLineMustBeNonnegativeMessage, d.Source)
+	}
+	if err := validateInitializationReferences(d); err != nil {
+		return err
 	}
 	for i, dep := range d.Dependencies {
 		if err := dep.Selector.Validate(); err != nil {
-			return invalid(fmt.Sprintf("dependency %d: %v", i, err), dep.Source)
+			return invalid(fmt.Sprintf(dependencyFormat, i, err), dep.Source)
 		}
 		if dep.Access != Direct && dep.Access != Deferred {
-			return invalid(fmt.Sprintf("dependency %d: access must be explicit", i), dep.Source)
+			return invalid(fmt.Sprintf(dependencyAccessMustBeExplicitFormat, i), dep.Source)
 		}
 		if dep.Cardinality != One && dep.Cardinality != ZeroOrOne && dep.Cardinality != Many {
-			return invalid(fmt.Sprintf("dependency %d: cardinality must be explicit", i), dep.Source)
+			return invalid(fmt.Sprintf(dependencyCardinalityMustBeExplicitFormat, i), dep.Source)
 		}
 		if dep.Source.Line < 0 {
-			return invalid(fmt.Sprintf("dependency %d: negative source line", i), dep.Source)
+			return invalid(fmt.Sprintf(dependencyNegativeSourceLineFormat, i), dep.Source)
 		}
 	}
 	return nil
@@ -147,6 +176,7 @@ func (d BeanDefinition) Clone() BeanDefinition {
 	d.Qualifiers = slices.Clone(d.Qualifiers)
 	d.Contracts = slices.Clone(d.Contracts)
 	d.Dependencies = slices.Clone(d.Dependencies)
+	d.DependsOn = slices.Clone(d.DependsOn)
 	for i := range d.Dependencies {
 		d.Dependencies[i].Selector.Qualifiers = slices.Clone(d.Dependencies[i].Selector.Qualifiers)
 	}
@@ -178,13 +208,15 @@ func (s Selector) Validate() error {
 		}
 	}
 	if s.Contract == "" && s.Name == "" {
-		return invalid("a contract or name is required")
+		return invalid(aContractOrNameIsRequiredMessage)
 	}
-	if s.Contract != "" && strings.TrimSpace(string(s.Contract)) == "" || s.Name != "" && strings.TrimSpace(s.Name) == "" {
-		return invalid("supplied constraints must be nonblank")
+	blankContract := s.Contract != "" && strings.TrimSpace(string(s.Contract)) == ""
+	blankName := s.Name != "" && strings.TrimSpace(s.Name) == ""
+	if blankContract || blankName {
+		return invalid(suppliedConstraintsMustBeNonblankMessage)
 	}
 	if err := unique(s.Qualifiers); err != nil {
-		return invalid("qualifiers: " + err.Error())
+		return invalid(qualifiersLabel + err.Error())
 	}
 	return nil
 }
@@ -193,10 +225,10 @@ func unique[T ~string](values []T) error {
 	seen := make(map[T]bool, len(values))
 	for _, v := range values {
 		if strings.TrimSpace(string(v)) == "" {
-			return fmt.Errorf("blank token")
+			return errors.New(blankTokenMessage)
 		}
 		if seen[v] {
-			return fmt.Errorf("duplicate token %q", v)
+			return fmt.Errorf(duplicateTokenFormat, v)
 		}
 		seen[v] = true
 	}

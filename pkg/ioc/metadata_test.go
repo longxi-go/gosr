@@ -190,7 +190,11 @@ func TestDefinitionCloneDetachesEverySlice(t *testing.T) {
 	clone.Qualifiers[0] = "changed"
 	clone.Dependencies[0].Selector.Qualifiers[0] = "changed"
 	clone.Dependencies[0].Selector.Name = "changed"
-	if original.Contracts[0] != "example.Repository" || original.Aliases[0] != "main" || original.Qualifiers[0] != "prod" || original.Dependencies[0].Selector.Qualifiers[0] != "durable" || original.Dependencies[0].Selector.Name != "db" {
+	if original.Contracts[0] != "example.Repository" ||
+		original.Aliases[0] != "main" ||
+		original.Qualifiers[0] != "prod" ||
+		original.Dependencies[0].Selector.Qualifiers[0] != "durable" ||
+		original.Dependencies[0].Selector.Name != "db" {
 		t.Fatal("clone changed source metadata")
 	}
 	zero := (ioc.BeanDefinition{}).Clone()
@@ -258,7 +262,9 @@ func TestErrorsKeepCodeCauseAndSource(t *testing.T) {
 	}) || errors.Is(err, &ioc.Error{}) {
 		t.Fatal("error identity lost")
 	}
-	if !strings.Contains(err.Error(), "repo.go:7") || !strings.Contains(err.Error(), "service -> repository") || !strings.Contains(err.Error(), "allocation failed") {
+	if !strings.Contains(err.Error(), "repo.go:7") ||
+		!strings.Contains(err.Error(), "service -> repository") ||
+		!strings.Contains(err.Error(), "allocation failed") {
 		t.Fatal("missing diagnostics")
 	}
 	var typed *ioc.Error

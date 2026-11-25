@@ -19,13 +19,16 @@ import (
 	"os"
 )
 
-const newFilePermissions os.FileMode = 0o644
+const (
+	newFilePermissions os.FileMode = 0o644
+	parentPermissions  os.FileMode = 0o755
+)
 
 func destinationMode(path string) (os.FileMode, error) {
 	info, err := os.Lstat(path)
 	if err == nil {
 		if !info.Mode().IsRegular() {
-			return 0, fmt.Errorf("generated output destination is not a regular file: %s", path)
+			return 0, fmt.Errorf(nonRegularOutputFormat, path)
 		}
 		return info.Mode().Perm(), nil
 	}

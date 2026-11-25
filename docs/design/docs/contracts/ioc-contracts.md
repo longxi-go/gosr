@@ -30,7 +30,7 @@ classDiagram
 ```
 
 BeanDefinition contains copied metadata: ID, Name, Aliases, Contracts, Qualifiers,
-Dependencies, Scope, Primary, Lazy, Order and Source. A definition is not a Go
+Dependencies, DependsOn, Scope, Primary, Lazy, Order and Source. A definition is not a Go
 type: several definitions may expose the same contract and one definition may
 expose several contracts without multiplying singleton instances. Contracts are
 opaque exact strings; compilers may encode canonical full Go types. That encoding
@@ -111,7 +111,7 @@ Close is repeatable and can transition any state through Closing to Closed.
 Each context owns independent singleton state; prototype resolution creates a
 fresh object and aliases share identity.
 
-Start must reject cycles in the entire active direct-creation and ordering graph
+Start must reject cycles in the entire active direct-creation and initialization-prerequisite graph
 before allocating objects or running user factories. Deferred access delays
 resolution without permitting early exposure. Dynamic or reentrant waits must
 fail without deadlock. A plain lazy object receives Init on first creation;
@@ -126,6 +126,38 @@ Objects are allocated and assembled, then initialized before exposure.
 Application activation completes before Running. Cleanup calls Stop before
 Destroy, in reverse dependency ownership order. Failed Init still requires
 Destroy; attempting Start makes the object eligible for Stop.
+
+## Initialization prerequisites
+
+```mermaid
+sequenceDiagram
+    participant C as Container
+    participant P as Prerequisite
+    participant D as Dependent
+    C->>P: Construct and Init
+    P-->>C: Initialization succeeds
+    C->>D: Construct and Init
+```
+
+`DependsOn` references primary Bean names or aliases without creating injection
+ports. Names must be nonblank, distinct and different from the definition's own
+name or aliases. Metadata validation does not require the targets to be present
+in the same registration batch. Implementations resolve active targets and
+reject missing targets, cycles and unsupported ownership relations before
+construction. A conditionally excluded dependent creates no prerequisite demand.
+
+Every prerequisite must complete construction and Init before the dependent's
+factory runs, including lazy targets. Failure prevents that factory from running.
+A lazy dependent does not demand its prerequisites until it is created. The list
+does not prescribe order among independent prerequisites or wait for Start,
+background tasks or business readiness. Deferred injection remains deferred.
+Same-owner cleanup releases dependents before prerequisites; shared targets retain
+their owner's lifetime. Implementations document supported scope combinations
+and cross-owner shutdown phases rather than creating implicit scopes or leases.
+
+`Primary` selects a single dependency among active matching candidates. It does
+not decide which definitions satisfy registration conditions. `Order` orders
+collections; it is not an initialization prerequisite or condition priority.
 
 ## Scopes and ownership
 
@@ -164,3 +196,5 @@ carry no application or request references; their startup barrier and best-effor
 closing semantics apply only to implementations providing that integration.
 BeanDefinition.Order and collection binding remain metadata-based and unchanged
 by runtime Ordered extension sorting.
+
+`EnvironmentAccessor` is an optional capability separate from `ApplicationContext`. `Environment() environment.Environment` returns the associated Environment owner; it may be live while context construction uses a pinned snapshot. Access does not transfer shutdown ownership.

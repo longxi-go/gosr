@@ -19,6 +19,10 @@ import (
 	"errors"
 )
 
+const (
+	stepExecutorIsNilMessage = "step executor is nil"
+)
+
 type namedStep[S any] struct {
 	name    string
 	execute StepFunc[S]
@@ -39,7 +43,7 @@ func (s namedStep[S]) Name() string {
 
 func (s namedStep[S]) Execute(ctx context.Context, state S) error {
 	if s.execute == nil {
-		return errors.New("step executor is nil")
+		return errors.New(stepExecutorIsNilMessage)
 	}
 	return s.execute(ctx, state)
 }

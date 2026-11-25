@@ -33,4 +33,9 @@
 // is transactional, with caller-owned target synchronization. These interfaces
 // specify runtime obligations for implementations, not an engine conformance
 // claim established by the local helper tests.
+// Placeholder keys may contain nested placeholders, for example
+// ${${stage}.url:localhost}. Resolve the key before lookup; defaults apply only
+// to missing keys. Escaped placeholders remain literal and are never reparsed.
+// Nested keys share the implementation's cycle, depth, output and cancellation
+// limits with value and default expansion.
 package environment

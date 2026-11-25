@@ -21,6 +21,18 @@ import (
 	"sort"
 )
 
+const (
+	// BlankAlias contributes package initialization without a qualified identifier.
+	BlankAlias                          = "_"
+	dotAlias                            = "."
+	initFunctionName                    = "init"
+	blankImportCannotQualifyATypeFormat = "blank import %s cannot qualify a type"
+	conflictingImportAliasesFormat      = "import %s has conflicting aliases %q and %q"
+	conflictingImportIdentifierFormat   = "import alias %s conflicts between %s and %s"
+	invalidImportAsFormat               = "invalid import %q as %q"
+	unresolvedImportFormat              = "default import %s requires a typed reference or explicit alias"
+)
+
 // AliasFunc chooses an import alias only when a package is first used. An empty
 // alias selects the package's declared name; a blank import cannot qualify a type.
 // The index includes explicit imports; callers can preserve established naming.
@@ -67,18 +79,16 @@ func (s *Set) Add(importPath, alias string) string {
 	if s.err != nil {
 		return alias
 	}
-	if importPath == "" || alias == "." || alias == "init" ||
-		(alias != "" && alias != "_" &&
-			(!token.IsIdentifier(alias) || token.Lookup(alias).IsKeyword())) {
-		s.err = fmt.Errorf("invalid import %q as %q", importPath, alias)
+	if importPath == "" || !validAlias(alias) {
+		s.err = fmt.Errorf(invalidImportAsFormat, importPath, alias)
 		return alias
 	}
 	if old, ok := s.entries[importPath]; ok {
-		if old.alias == alias || alias == "_" {
+		if old.alias == alias || alias == BlankAlias {
 			return old.identifier
 		}
-		if old.alias != "_" {
-			s.err = fmt.Errorf("import %s has conflicting aliases %q and %q", importPath, old.alias, alias)
+		if old.alias != BlankAlias {
+			s.err = fmt.Errorf(conflictingImportAliasesFormat, importPath, old.alias, alias)
 			return alias
 		}
 	}
@@ -88,6 +98,17 @@ func (s *Set) Add(importPath, alias string) string {
 	}
 	s.checkIdentifier(importPath, alias)
 	return alias
+}
+
+func validAlias(alias string) bool {
+	switch alias {
+	case "", BlankAlias:
+		return true
+	case dotAlias, initFunctionName:
+		return false
+	default:
+		return token.IsIdentifier(alias) && !token.Lookup(alias).IsKeyword()
+	}
 }
 
 // Type spells a type using go/types, registering only packages in the emitted
@@ -103,7 +124,7 @@ func (s *Set) qualifier(pkg *types.Package) string {
 	if s.err != nil {
 		return pkg.Name()
 	}
-	if entry, ok := s.entries[pkg.Path()]; ok && entry.alias != "_" {
+	if entry, ok := s.entries[pkg.Path()]; ok && entry.alias != BlankAlias {
 		if entry.alias == "" {
 			s.checkIdentifier(pkg.Path(), pkg.Name())
 			entry.identifier = pkg.Name()
@@ -116,8 +137,8 @@ func (s *Set) qualifier(pkg *types.Package) string {
 	if s.alias != nil {
 		alias = s.alias(pkg.Path(), pkg.Name(), len(s.entries))
 	}
-	if alias == "_" {
-		s.err = fmt.Errorf("blank import %s cannot qualify a type", pkg.Path())
+	if alias == BlankAlias {
+		s.err = fmt.Errorf(blankImportCannotQualifyATypeFormat, pkg.Path())
 		return pkg.Name()
 	}
 	if alias == "" {
@@ -134,12 +155,12 @@ func (s *Set) qualifier(pkg *types.Package) string {
 }
 
 func (s *Set) checkIdentifier(importPath, identifier string) {
-	if s.err != nil || identifier == "" || identifier == "_" {
+	if s.err != nil || identifier == "" || identifier == BlankAlias {
 		return
 	}
 	for path, entry := range s.entries {
 		if path != importPath && entry.identifier == identifier {
-			s.err = fmt.Errorf("import alias %s conflicts between %s and %s", identifier, path, importPath)
+			s.err = fmt.Errorf(conflictingImportIdentifierFormat, identifier, path, importPath)
 			return
 		}
 	}
@@ -159,7 +180,7 @@ func (s *Set) List() ([]Import, error) {
 	for _, p := range paths {
 		entry := s.entries[p]
 		if entry.alias == "" && entry.identifier == "" {
-			return nil, fmt.Errorf("default import %s requires a typed reference or explicit alias", p)
+			return nil, fmt.Errorf(unresolvedImportFormat, p)
 		}
 		result = append(result, Import{
 			Path:  p,

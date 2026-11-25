@@ -23,6 +23,14 @@ import (
 	"github.com/longxi-go/gosr/pkg/codegen/diagnostic"
 )
 
+const (
+	renderPhase            = "render"
+	strictMissingKeyOption = "missingkey=error"
+	templateLabel          = "template "
+	templateRoot           = "codegen"
+	parseTemplatesMessage  = "parse templates"
+)
+
 // Set contains parsed immutable templates. Execute is safe for concurrent calls;
 // each call owns its output. Views and helper side effects remain caller-owned.
 type Set struct {
@@ -33,12 +41,12 @@ type Set struct {
 // Built-in index and helper functions retain their own semantics. Callers own
 // template assets, helpers and the semantic shape of view models.
 func ParseFS(source fs.FS, functions template.FuncMap, patterns ...string) (*Set, error) {
-	t, err := template.New("codegen").
-		Option("missingkey=error").
+	t, err := template.New(templateRoot).
+		Option(strictMissingKeyOption).
 		Funcs(functions).
 		ParseFS(source, patterns...)
 	if err != nil {
-		return nil, diagnostic.Wrap("render", token.Position{}, "parse templates", err)
+		return nil, diagnostic.Wrap(renderPhase, token.Position{}, parseTemplatesMessage, err)
 	}
 	return &Set{
 		templates: t,
@@ -49,7 +57,7 @@ func ParseFS(source fs.FS, functions template.FuncMap, patterns ...string) (*Set
 func (s *Set) Execute(name string, view any) ([]byte, error) {
 	var out bytes.Buffer
 	if err := s.templates.ExecuteTemplate(&out, name, view); err != nil {
-		return nil, diagnostic.Wrap("render", token.Position{}, "template "+name, err)
+		return nil, diagnostic.Wrap(renderPhase, token.Position{}, templateLabel+name, err)
 	}
 	return out.Bytes(), nil
 }

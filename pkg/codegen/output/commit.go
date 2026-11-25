@@ -17,9 +17,12 @@ package output
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/longxi-go/gosr/pkg/codegen/artifact"
+)
+
+const (
+	artifactSetIsNilMessage = "artifact set is nil"
 )
 
 // Commit preflights every destination and stale file, stages all changed bytes,
@@ -36,7 +39,7 @@ func Commit(ctx context.Context, set *artifact.Set, options Options) (resultErr 
 		return err
 	}
 	if set == nil {
-		return fmt.Errorf("artifact set is nil")
+		return errors.New(artifactSetIsNilMessage)
 	}
 	plan, err := prepareCommit(ctx, set, options)
 	if err != nil {

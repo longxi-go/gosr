@@ -18,7 +18,12 @@ import (
 	"encoding/json"
 	"maps"
 	"slices"
+	"strconv"
 	"strings"
+)
+
+const (
+	expectedJSONNumberTextMessage = "expected JSON number text"
 )
 
 // Kind identifies one of the closed portable value forms. A missing property is
@@ -61,13 +66,9 @@ func String(text string) Value {
 
 // Bool retains a boolean with its canonical scalar spelling.
 func Bool(value bool) Value {
-	text := "false"
-	if value {
-		text = "true"
-	}
 	return Value{
 		kind:   BoolKind,
-		scalar: text,
+		scalar: strconv.FormatBool(value),
 	}
 }
 
@@ -80,7 +81,7 @@ func Number(text string) (Value, error) {
 		strings.TrimSpace(text) != text || !json.Valid([]byte(text)) {
 		return Value{}, &Error{
 			Code:    InvalidValue,
-			Message: "expected JSON number text",
+			Message: expectedJSONNumberTextMessage,
 		}
 	}
 	return Value{

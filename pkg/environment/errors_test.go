@@ -64,7 +64,10 @@ func TestErrorClassificationCauseAndRedaction(t *testing.T) {
 	}
 	var detail *environment.Error
 	var underlying *privateFailure
-	if !errors.As(wrapped, &detail) || detail != err || !errors.As(wrapped, &underlying) || underlying != cause {
+	if !errors.As(wrapped, &detail) ||
+		detail != err ||
+		!errors.As(wrapped, &underlying) ||
+		underlying != cause {
 		t.Fatal("structured error or cause inaccessible")
 	}
 	text := err.Error()
@@ -87,7 +90,18 @@ func TestErrorClassificationCauseAndRedaction(t *testing.T) {
 }
 
 func TestValidation(t *testing.T) {
-	for _, key := range []string{"app.port", "a", "app", "app[0]", "a b", "配置.端口", "a\tb", "a\nb", "${literal}", "!literal"} {
+	for _, key := range []string{
+		"app.port",
+		"a",
+		"app",
+		"app[0]",
+		"a b",
+		"配置.端口",
+		"a\tb",
+		"a\nb",
+		"${literal}",
+		"!literal",
+	} {
 		if err := environment.ValidateKey(key); err != nil {
 			t.Errorf("valid key %q: %v", key, err)
 		}
@@ -104,7 +118,24 @@ func TestValidation(t *testing.T) {
 			t.Errorf("valid profile %q: %v", profile, err)
 		}
 	}
-	for _, profile := range []string{"", " ", " dev", "dev ", "dev prod", "!dev", "dev|prod", "dev&prod", "(dev)", ".dev", "-dev", "_dev", "développement", "生产", "dev/qa", "dev\n"} {
+	for _, profile := range []string{
+		"",
+		" ",
+		" dev",
+		"dev ",
+		"dev prod",
+		"!dev",
+		"dev|prod",
+		"dev&prod",
+		"(dev)",
+		".dev",
+		"-dev",
+		"_dev",
+		"développement",
+		"生产",
+		"dev/qa",
+		"dev\n",
+	} {
 		if err := environment.ValidateProfile(profile); !errors.Is(err, &environment.Error{
 			Code: environment.InvalidProfile,
 		}) {

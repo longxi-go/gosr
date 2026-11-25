@@ -19,6 +19,16 @@ import (
 	"strings"
 )
 
+const (
+	errorDomain    = "environment"
+	errorSeparator = ": "
+	keyLabel       = "key="
+	nilErrorText   = "<nil>"
+	pathSeparator  = " -> "
+	positionFormat = "%s:%d:%d"
+	sourceLabel    = "source="
+)
+
 // Code classifies failures independently of an engine or diagnostic wording.
 type Code string
 
@@ -63,25 +73,25 @@ type Error struct {
 
 func (e *Error) Error() string {
 	if e == nil {
-		return "<nil>"
+		return nilErrorText
 	}
-	parts := []string{"environment", string(e.Code)}
+	parts := []string{errorDomain, string(e.Code)}
 	if e.Key != "" {
-		parts = append(parts, "key="+e.Key)
+		parts = append(parts, keyLabel+e.Key)
 	}
 	if e.Origin.Source != "" {
-		parts = append(parts, "source="+e.Origin.Source)
+		parts = append(parts, sourceLabel+e.Origin.Source)
 	}
 	if e.Origin.Resource != "" {
-		parts = append(parts, fmt.Sprintf("%s:%d:%d", e.Origin.Resource, e.Origin.Line, e.Origin.Column))
+		parts = append(parts, fmt.Sprintf(positionFormat, e.Origin.Resource, e.Origin.Line, e.Origin.Column))
 	}
 	if len(e.Path) > 0 {
-		parts = append(parts, strings.Join(e.Path, " -> "))
+		parts = append(parts, strings.Join(e.Path, pathSeparator))
 	}
 	if e.Message != "" {
 		parts = append(parts, e.Message)
 	}
-	return strings.Join(parts, ": ")
+	return strings.Join(parts, errorSeparator)
 }
 
 // Is matches semantic classification, leaving provenance diagnostic-only.
