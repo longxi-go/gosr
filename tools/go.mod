@@ -3,7 +3,7 @@ module github.com/longxi-go/gosr/tools
 go 1.27.0
 
 require (
-	github.com/longxi-go/gosr v0.1.0
+	github.com/longxi-go/gosr v0.1.2
 	golang.org/x/tools v0.49.0
 	sigs.k8s.io/controller-tools v0.20.1
 )
